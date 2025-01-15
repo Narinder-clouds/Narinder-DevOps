@@ -1,0 +1,14 @@
+Description: test templete 
+Parameters:
+  S3bucketname:
+    Description: Please provide the name of S3 bucket 
+    Type: String  
+
+Resources: 
+  devbucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref S3bucketname
+      Tags: 
+       - Key: env 
+         Value: dev  
