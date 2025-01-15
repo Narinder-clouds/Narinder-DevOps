@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  InstanceType:
+    Type: String
+    Default: 't2.micro'
+    Description: 'The EC2 instance type'
+  
+  Environment:
+    Type: String
+    Default: 'Production'
+    Description: 'The deployment environment'
+
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: ami-0e2c8caa4b6378d8c
+      InstanceType: !Ref InstanceType
+
+  MyS3Bucket:
+    Type: AWS::S3::Bucket

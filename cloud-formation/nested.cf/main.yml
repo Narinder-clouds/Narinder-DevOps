@@ -1,0 +1,11 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  MyFirstNestedStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: 'https://cf-templates-zdq7qdtwmu1f-us-east-1.s3.us-east-1.amazonaws.com/child.yml'
+      Parameters:
+        # Pass parameters to the nested stack if needed
+        InstanceType: 't2.micro'
+
+
