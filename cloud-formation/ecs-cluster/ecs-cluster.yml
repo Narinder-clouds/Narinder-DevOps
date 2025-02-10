@@ -1,0 +1,146 @@
+Parameters:
+  InstanceType:
+    Type: String
+    Default: "t2.micro"
+  
+  DesiredCapacity:
+    Type: Number
+    Default: 1
+  
+  MaxSize:
+    Type: Number
+    Default: 1
+  
+  ECSAmi:
+    Type: String
+    Default: ami-0e2c8caa4b6378d8c
+  
+  VpcId:
+    Type: String
+    Default: vpc-0cf616bda57c2b0e7
+  
+  SubnetIds:
+    Type: CommaDelimitedList  
+    Default: subnet-0b483a578ceb7d60e  
+
+Resources:
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: stage
+
+  ECSAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn:
+      - ECSCluster
+      - EC2Role
+    Properties:
+      MinSize: 1
+      MaxSize: 
+        Ref: MaxSize
+      DesiredCapacity:
+        Ref: DesiredCapacity
+      VPCZoneIdentifier:
+        Ref: SubnetIds
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ContainerInstances
+        Version: !GetAtt ContainerInstances.LatestVersionNumber
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles:
+        - !Ref EC2Role
+
+  ContainerInstances:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: "Launch-temp-ecs"
+      LaunchTemplateData:
+        ImageId: 
+          Ref: ECSAmi
+        InstanceType:
+          Ref: InstanceType
+        IamInstanceProfile:
+          Name: !Ref EC2InstanceProfile
+        SecurityGroupIds: 
+          - !Ref ContainerHostSecurityGroup
+
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: EC2TaskExecutionRole
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal: 
+              Service:
+                - ecs-tasks.amazonaws.com
+            Action: 
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  ContainerHostSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "Security group for ECS container instances"
+      VpcId:
+        Ref: VpcId
+
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement: 
+          - Effect: Allow
+            Principal: 
+              Service: 
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role
+
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: first-run-task
+      Cpu: "1024"
+      Memory: "512"
+      NetworkMode: bridge
+      RequiresCompatibilities:
+        - EC2
+      ContainerDefinitions:
+        - Name: Apache
+          Image: 816069132056.dkr.ecr.us-east-1.amazonaws.com/narinder@sha256:6665590980202d49bcdbe9c5129165db134a464a277966deadda8247a63f7e88
+          Essential: true
+          Cpu: 256
+          PortMappings:
+            - ContainerPort: 80
+              HostPort: 80
+              Protocol: tcp
+
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: Apache2
+      Cluster: !Ref ECSCluster
+      DesiredCount: 1
+      LaunchType: EC2
+      NetworkConfiguration:
+       
+        # AssignPublicIp: ENABLED
+        Subnets:
+          - subnet-0b483a578ceb7d60e
+      TaskDefinition: !Ref ECSTaskDefinition
+
+Outputs:
+  ClusterName:
+    Value: !Ref ECSCluster
+
+  ECSTaskDefinition:
+    Description: The created TaskDefinition.
+    Value: !Ref ECSTaskDefinition
